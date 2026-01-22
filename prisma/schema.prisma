@@ -11,3 +11,17 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+
+// Base model fields to include in all entities:
+//   created_at DateTime @default(now())
+//   updated_at DateTime @updatedAt
+//   is_deleted Boolean @default(false)
+//
+// Example usage:
+// model User {
+//   id        Int      @id @default(autoincrement())
+//   email     String   @unique
+//   created_at DateTime @default(now())
+//   updated_at DateTime @updatedAt
+//   is_deleted Boolean @default(false)
+// }
