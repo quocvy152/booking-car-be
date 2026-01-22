@@ -1,0 +1,182 @@
+---
+description: Standard module structure following Clean Architecture pattern with domain, application, and infrastructure layers
+globs: src/**/*.module.ts, src/**/index.ts, src/**/application/**/*, src/**/infrastructure/**/*, src/**/domain/**/*
+alwaysApply: true
+---
+
+- **Module Structure Overview**
+  - All modules must follow the Clean Architecture pattern with three main layers: `domain`, `application`, and `infrastructure`
+  - Reference implementation: [user module](mdc:src/user)
+  - Each module should be self-contained with proper separation of concerns
+
+- **Root Level Structure**
+  - **Required Files:**
+    - `index.ts` - Main export file that re-exports from all layers
+    - `{module-name}.module.ts` - NestJS module definition
+  - **Example from [user/index.ts](mdc:src/user/index.ts):**
+  ```typescript
+  export * from './domain';
+  export * from './application';
+  export * from './infrastructure';
+  export * from './user.module';
+  ```
+
+- **Domain Layer (`domain/`)**
+  - **Purpose:** Contains business logic, entities, enums, and repository interfaces
+  - **Required Structure:**
+    - `entities/` - Domain entities (business objects)
+      - `{entity-name}.entity.ts` - Entity class
+      - `index.ts` - Export all entities
+    - `enums/` - Domain enumerations
+      - `{enum-name}.enum.ts` - Enum definition
+      - `index.ts` - Export all enums
+    - `repositories/` - Repository interfaces (contracts)
+      - `{entity-name}.repository.interface.ts` - Interface definition
+      - `index.ts` - Export all repository interfaces
+    - `index.ts` - Export from entities, enums, and repositories
+  - **Example from [user/domain/index.ts](mdc:src/user/domain/index.ts):**
+  ```typescript
+  export * from './entities';
+  export * from './enums';
+  export * from './repositories';
+  ```
+  - **Rules:**
+    - ✅ DO: Keep domain layer pure (no framework dependencies)
+    - ✅ DO: Use interfaces for repositories (dependency inversion)
+    - ❌ DON'T: Import from infrastructure or application layers
+    - ❌ DON'T: Include NestJS decorators in domain entities
+
+- **Application Layer (`application/`)**
+  - **Purpose:** Contains use cases and business logic orchestration
+  - **Required Structure:**
+    - `{module-name}.service.ts` - Main service class with business logic
+    - `index.ts` - Export the service
+  - **Example from [user/application/user.service.ts](mdc:src/user/application/user.service.ts):**
+  ```typescript
+  import { Injectable, Inject } from '@nestjs/common';
+  import { User } from '../domain/entities';
+  import type { IUserRepository } from '../domain/repositories';
+  import { USER_REPOSITORY } from '../infrastructure/user.constants';
+
+  @Injectable()
+  export class UserService {
+    constructor(
+      @Inject(USER_REPOSITORY)
+      private readonly userRepository: IUserRepository,
+    ) {}
+    // ... methods
+  }
+  ```
+  - **Rules:**
+    - ✅ DO: Inject repository interfaces using constants from infrastructure
+    - ✅ DO: Use `type` import for interfaces to avoid runtime dependencies
+    - ✅ DO: Keep services focused on business logic
+    - ❌ DON'T: Import directly from infrastructure implementations
+    - ❌ DON'T: Include HTTP-specific logic (that belongs in controllers)
+
+- **Infrastructure Layer (`infrastructure/`)**
+  - **Purpose:** Contains framework-specific implementations, controllers, DTOs, and external integrations
+  - **Required Structure:**
+    - `controllers/` - HTTP controllers
+      - `{module-name}.controller.ts` - Controller class
+      - `index.ts` - Export controller
+    - `dto/` - Data Transfer Objects for API requests/responses
+      - `{action}-{entity}.dto.ts` - DTO classes (e.g., `create-user.dto.ts`)
+      - `index.ts` - Export all DTOs
+    - `repositories/` - Repository implementations
+      - `prisma-{entity}.repository.ts` - Prisma implementation
+      - `index.ts` - Export repository implementation
+    - `{module-name}.constants.ts` - Dependency injection tokens
+    - `index.ts` - Export from controllers, dto, repositories, and constants
+  - **Example from [user/infrastructure/index.ts](mdc:src/user/infrastructure/index.ts):**
+  ```typescript
+  export * from './controllers';
+  export * from './dto';
+  export * from './repositories';
+  export * from './user.constants';
+  ```
+  - **Constants Pattern from [user/infrastructure/user.constants.ts](mdc:src/user/infrastructure/user.constants.ts):**
+  ```typescript
+  export const USER_REPOSITORY = 'USER_REPOSITORY';
+  ```
+  - **Rules:**
+    - ✅ DO: Use Prisma for database implementations
+    - ✅ DO: Create constants file for DI tokens (follow `{MODULE}_REPOSITORY` pattern)
+    - ✅ DO: Keep controllers thin (delegate to services)
+    - ✅ DO: Use DTOs for all API inputs/outputs
+    - ❌ DON'T: Put business logic in controllers
+    - ❌ DON'T: Import domain entities directly in DTOs (use separate DTOs)
+
+- **Module Definition Pattern**
+  - **Example from [user/user.module.ts](mdc:src/user/user.module.ts):**
+  ```typescript
+  import { Module } from '@nestjs/common';
+  import { UserService } from './application/user.service';
+  import { UserController } from './infrastructure/controllers';
+  import { PrismaUserRepository } from './infrastructure/repositories';
+  import { USER_REPOSITORY } from './infrastructure/user.constants';
+  import { PrismaModule } from '../prisma/prisma.module';
+
+  @Module({
+    imports: [PrismaModule],
+    controllers: [UserController],
+    providers: [
+      UserService,
+      {
+        provide: USER_REPOSITORY,
+        useClass: PrismaUserRepository,
+      },
+    ],
+    exports: [UserService],
+  })
+  export class UserModule {}
+  ```
+  - **Rules:**
+    - ✅ DO: Import PrismaModule for database access
+    - ✅ DO: Use provider pattern with constants for repository injection
+    - ✅ DO: Export services that other modules might need
+    - ✅ DO: Register controllers from infrastructure layer
+    - ❌ DON'T: Import domain entities directly in module
+    - ❌ DON'T: Export repository implementations (only interfaces via services)
+
+- **Index Files Pattern**
+  - Every directory should have an `index.ts` that re-exports its contents
+  - This enables clean imports: `from './domain'` instead of `from './domain/entities/user.entity'`
+  - **Example pattern:**
+  ```typescript
+  // In subdirectories (entities/, enums/, etc.)
+  export * from './user.entity';
+  
+  // In layer directories (domain/, application/, infrastructure/)
+  export * from './entities';
+  export * from './enums';
+  ```
+
+- **Naming Conventions**
+  - Module folder: `{module-name}/` (lowercase, kebab-case if multi-word)
+  - Module class: `{ModuleName}Module` (PascalCase)
+  - Service: `{ModuleName}Service` (PascalCase)
+  - Controller: `{ModuleName}Controller` (PascalCase)
+  - Entity: `{EntityName}` (PascalCase)
+  - Repository interface: `I{EntityName}Repository` (PascalCase with I prefix)
+  - Repository implementation: `Prisma{EntityName}Repository` (PascalCase)
+  - Constants: `{MODULE}_REPOSITORY` (UPPER_SNAKE_CASE)
+  - DTOs: `{Action}{Entity}Dto` (PascalCase, e.g., `CreateUserDto`)
+
+- **Dependency Direction**
+  - Domain ← Application ← Infrastructure
+  - Domain should have zero dependencies
+  - Application depends only on Domain
+  - Infrastructure depends on Domain and Application
+  - Never reverse these dependencies
+
+- **When Creating a New Module**
+  1. Create root folder: `src/{module-name}/`
+  2. Create three layer folders: `domain/`, `application/`, `infrastructure/`
+  3. Set up domain layer: entities, enums, repository interfaces
+  4. Set up application layer: service class
+  5. Set up infrastructure layer: controller, DTOs, repository implementation, constants
+  6. Create all `index.ts` files for proper exports
+  7. Create `{module-name}.module.ts` with proper NestJS configuration
+  8. Create root `index.ts` exporting all layers
+  9. Follow the exact structure from [user module](mdc:src/user) as reference
