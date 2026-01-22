@@ -32,27 +32,46 @@ jobs:
         env:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           CHAT_ID: ${{ secrets.CHAT_ID }}
+
           JOB_STATUS: ${{ job.status }}
           REPO: ${{ github.repository }}
           BRANCH: ${{ github.ref_name }}
           COMMIT: ${{ github.sha }}
           ACTOR: ${{ github.actor }}
+
+          WORKFLOW: ${{ github.workflow }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_NUMBER: ${{ github.run_number }}
+          EVENT: ${{ github.event_name }}
+
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+
         run: |
-          # Xác định icon trạng thái
+          # Emoji theo trạng thái
           EMOJI="✅"
           if [ "$JOB_STATUS" != "success" ]; then
             EMOJI="❌"
           fi
 
-          # Tạo nội dung tin nhắn (Dùng printf để tránh lỗi EOF)
-          MESSAGE="$EMOJI CI $JOB_STATUS%0A"
-          MESSAGE+="Repo: $REPO%0A"
-          MESSAGE+="Branch: $BRANCH%0A"
-          MESSAGE+="Commit: ${COMMIT:0:7}%0A" # Lấy 7 ký tự đầu của hash
-          MESSAGE+="Author: $ACTOR"
+          RUN_URL="https://github.com/$REPO/actions/runs/$RUN_ID"
 
-          # Gửi request
-          # Lưu ý: %0A là ký tự xuống dòng được mã hóa URL cho curl
+          MESSAGE="$EMOJI *CI $JOB_STATUS*%0A"
+          MESSAGE+="*Repo:* $REPO%0A"
+          MESSAGE+="*Branch:* $BRANCH%0A"
+          MESSAGE+="*Commit:* \`${COMMIT:0:7}\`%0A"
+          MESSAGE+="*Actor:* $ACTOR%0A"
+          MESSAGE+="*Workflow:* $WORKFLOW (#$RUN_NUMBER)%0A"
+          MESSAGE+="*Event:* $EVENT%0A"
+
+          if [ -n "$PR_NUMBER" ]; then
+            MESSAGE+="%0A*PR:* #$PR_NUMBER - $PR_TITLE%0A"
+            MESSAGE+="🔗 $PR_URL%0A"
+          fi
+
+          MESSAGE+="%0A🔗 *Run:* $RUN_URL"
+
           curl -s -X POST "https://api.telegram.org/bot$BOT_TOKEN/sendMessage" \
             -d chat_id="$CHAT_ID" \
             -d text="$MESSAGE" \
