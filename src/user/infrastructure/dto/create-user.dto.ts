@@ -8,8 +8,14 @@ import {
 import { Gender, Role } from '../../domain/enums';
 
 export class CreateUserDto {
+  @IsString()
+  full_name: string;
+
   @IsEmail()
   email: string;
+
+  @IsString()
+  password: string;
 
   @IsOptional()
   @IsString()

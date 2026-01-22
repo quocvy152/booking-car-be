@@ -13,7 +13,9 @@ export class PrismaUserRepository implements IUserRepository {
   ): Promise<User> {
     const user = await this.prisma.user.create({
       data: {
+        full_name: data.full_name,
         email: data.email,
+        password: data.password!,
         phone: data.phone ?? null,
         gender: data.gender as Gender,
         role: (data.role ?? Role.USER) as Role,
@@ -51,8 +53,10 @@ export class PrismaUserRepository implements IUserRepository {
   private mapToDomain(prismaUser: PrismaUser): User {
     return {
       id: prismaUser.id,
+      full_name: prismaUser.full_name,
       email: prismaUser.email,
       phone: prismaUser.phone,
+      // password is excluded for security reasons
       gender: prismaUser.gender as User['gender'],
       role: prismaUser.role as User['role'],
       avatar: prismaUser.avatar,

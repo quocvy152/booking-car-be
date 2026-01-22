@@ -3,8 +3,10 @@ import { Gender, Role } from '../enums';
 
 export interface User extends BaseEntity {
   id: string;
+  full_name: string;
   email: string;
   phone: string | null;
+  password?: string; // Optional for security (excluded when returning users)
   gender: Gender;
   role: Role;
   avatar: string | null;

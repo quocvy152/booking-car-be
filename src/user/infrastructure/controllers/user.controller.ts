@@ -19,7 +19,9 @@ export class UserController {
   @HttpCode(HttpStatus.CREATED)
   async create(@Body() createUserDto: CreateUserDto) {
     const user = await this.userService.create({
+      full_name: createUserDto.full_name,
       email: createUserDto.email,
+      password: createUserDto.password,
       phone: createUserDto.phone ?? null,
       gender: createUserDto.gender,
       role: createUserDto.role ?? Role.USER,
