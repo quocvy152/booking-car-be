@@ -1,0 +1,59 @@
+name: CI + Telegram Notify
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Notify Telegram
+        if: always()
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          CHAT_ID: ${{ secrets.CHAT_ID }}
+          JOB_STATUS: ${{ job.status }}
+          REPO: ${{ github.repository }}
+          BRANCH: ${{ github.ref_name }}
+          COMMIT: ${{ github.sha }}
+          ACTOR: ${{ github.actor }}
+        run: |
+          # Xác định icon trạng thái
+          EMOJI="✅"
+          if [ "$JOB_STATUS" != "success" ]; then
+            EMOJI="❌"
+          fi
+
+          # Tạo nội dung tin nhắn (Dùng printf để tránh lỗi EOF)
+          MESSAGE="$EMOJI CI $JOB_STATUS%0A"
+          MESSAGE+="Repo: $REPO%0A"
+          MESSAGE+="Branch: $BRANCH%0A"
+          MESSAGE+="Commit: ${COMMIT:0:7}%0A" # Lấy 7 ký tự đầu của hash
+          MESSAGE+="Author: $ACTOR"
+
+          # Gửi request
+          # Lưu ý: %0A là ký tự xuống dòng được mã hóa URL cho curl
+          curl -s -X POST "https://api.telegram.org/bot$BOT_TOKEN/sendMessage" \
+            -d chat_id="$CHAT_ID" \
+            -d text="$MESSAGE" \
+            -d parse_mode="Markdown"
