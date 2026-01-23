@@ -1,0 +1,178 @@
+---
+description: Rules for handling linter errors properly without using disable comments
+globs: **/*.ts, **/*.tsx, **/*.js, **/*.jsx
+alwaysApply: true
+---
+
+- **Core Principle: NEVER use linter disable comments**
+  - ❌ DON'T: Use `// eslint-disable-next-line`, `// @ts-ignore`, `/* eslint-disable */`, etc.
+  - ✅ DO: Fix the actual code issue causing the linter error
+  - Always resolve linter errors by improving code quality, not by suppressing warnings
+
+- **Handling Unused Variables**
+  - **Problem:** Variables assigned but never used (e.g., destructuring to exclude a property)
+  - **Solution:** Use alternative patterns that don't create unused variables
+  - **Example from [auth.service.ts](mdc:src/auth/application/auth.service.ts):**
+  ```typescript
+  // ❌ DON'T: Creates unused variable
+  const { password, ...userWithoutPassword } = user;
+  
+  // ❌ DON'T: Using underscore prefix still triggers linter
+  const { password: _, ...userWithoutPassword } = user;
+  
+  // ✅ DO: Use Object.entries and filter
+  const userWithoutPassword = Object.fromEntries(
+    Object.entries(user).filter(([key]) => key !== 'password'),
+  ) as Omit<User, 'password'>;
+  ```
+
+- **Handling `any` Types**
+  - **Problem:** Unsafe `any` types causing type safety errors
+  - **Solution:** Create proper interfaces/types or use type assertions with proper types
+  - **Example from [auth.controller.ts](mdc:src/auth/infrastructure/controllers/auth.controller.ts):**
+  ```typescript
+  // ❌ DON'T: Using any type
+  const user = req.user as any;
+  
+  // ✅ DO: Create interface for type safety
+  interface OAuthUser {
+    provider_id: string;
+    email: string;
+    full_name: string;
+    avatar: string | null;
+  }
+  const user = req.user as OAuthUser;
+  ```
+  - **Example from [register.dto.ts](mdc:src/auth/infrastructure/dto/register.dto.ts):**
+  ```typescript
+  // ❌ DON'T: Using any for object access
+  const relatedValue = (args.object as any)[relatedPropertyName];
+  
+  // ✅ DO: Create interface for the object structure
+  interface RegisterDtoObject {
+    password: string;
+    [key: string]: unknown;
+  }
+  const object = args.object as RegisterDtoObject;
+  const relatedValue = object[relatedPropertyName];
+  ```
+  - **Example from [prisma-user.repository.ts](mdc:src/user/infrastructure/repositories/prisma-user.repository.ts):**
+  ```typescript
+  // ❌ DON'T: Using any for Prisma types
+  private mapToDomain(prismaUser: any): User {
+  
+  // ✅ DO: Import proper Prisma types
+  import { type User as PrismaUser } from '@prisma/client';
+  private mapToDomain(prismaUser: PrismaUser): User {
+  ```
+
+- **Handling Unused Imports**
+  - **Problem:** Imports that are defined but never used
+  - **Solution:** Remove unused imports completely
+  - **Example:**
+  ```typescript
+  // ❌ DON'T: Keep unused import
+  import { IsEmail, IsString, Matches } from 'class-validator';
+  
+  // ✅ DO: Remove unused import
+  import { IsEmail, IsString } from 'class-validator';
+  ```
+
+- **Handling Unused Function Parameters**
+  - **Problem:** Function parameters that are defined but never used
+  - **Solution:** Remove unused parameters or prefix with underscore if required by interface
+  - **Example:**
+  ```typescript
+  // ❌ DON'T: Keep unused parameter
+  defaultMessage(args: ValidationArguments) {
+    return 'confirm_password must match password';
+  }
+  
+  // ✅ DO: Remove unused parameter
+  defaultMessage() {
+    return 'confirm_password must match password';
+  }
+  ```
+
+- **Handling Unnecessary `async` Keywords**
+  - **Problem:** Functions marked as `async` but don't use `await`
+  - **Solution:** Remove `async` keyword and change return type from `Promise<T>` to `T` or `void`
+  - **Example from [google.strategy.ts](mdc:src/auth/infrastructure/strategies/google.strategy.ts):**
+  ```typescript
+  // ❌ DON'T: async without await
+  async validate(
+    accessToken: string,
+    refreshToken: string,
+    profile: GoogleProfile,
+    done: VerifyCallback,
+  ): Promise<any> {
+    // ... no await statements
+    done(null, user);
+  }
+  
+  // ✅ DO: Remove async, fix return type
+  validate(
+    accessToken: string,
+    refreshToken: string,
+    profile: GoogleProfile,
+    done: VerifyCallback,
+  ): void {
+    // ... no await statements
+    done(null, user);
+  }
+  ```
+
+- **Handling Formatting Issues (Prettier)**
+  - **Problem:** Code formatting doesn't match Prettier rules
+  - **Solution:** Fix formatting to match Prettier configuration
+  - **Example:**
+  ```typescript
+  // ❌ DON'T: Multi-line when Prettier expects single line
+  const frontendUrl =
+    process.env.FRONTEND_URL || 'http://localhost:3000';
+  res.redirect(
+    `${frontendUrl}/auth/callback?token=${result.access_token}`,
+  );
+  
+  // ✅ DO: Follow Prettier formatting
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+  res.redirect(`${frontendUrl}/auth/callback?token=${result.access_token}`);
+  ```
+
+- **Handling Type Assertions**
+  - **Problem:** Using `as any` for type assertions
+  - **Solution:** Use proper types from Prisma or create type mappings
+  - **Example from [prisma-user.repository.ts](mdc:src/user/infrastructure/repositories/prisma-user.repository.ts):**
+  ```typescript
+  // ❌ DON'T: Using any for type assertions
+  provider: (data.provider ?? DomainAuthProvider.EMAIL) as any,
+  
+  // ✅ DO: Import and use proper Prisma types
+  import { AuthProvider } from '@prisma/client';
+  provider: (data.provider ?? DomainAuthProvider.EMAIL) as AuthProvider,
+  ```
+
+- **General Best Practices**
+  - Always check linter errors before committing code
+  - Fix root causes, not symptoms
+  - Use TypeScript's type system to prevent errors at compile time
+  - Prefer explicit types over implicit `any`
+  - Remove unused code (imports, variables, parameters)
+  - Follow Prettier formatting rules consistently
+  - When fixing linter errors, ensure the fix improves code quality
+
+- **Common Patterns to Avoid**
+  - ❌ `// eslint-disable-next-line`
+  - ❌ `// @ts-ignore` or `// @ts-expect-error`
+  - ❌ `/* eslint-disable */` or `/* eslint-enable */`
+  - ❌ `// eslint-disable-line`
+  - ❌ `any` types without proper justification
+  - ❌ Unused variables with underscore prefix (still triggers linter)
+  - ❌ `async` functions without `await`
+
+- **When Fixing Linter Errors**
+  1. Read the error message carefully to understand the issue
+  2. Identify the root cause (type safety, unused code, formatting, etc.)
+  3. Apply the appropriate fix pattern from this rule
+  4. Verify the fix resolves the error without introducing new issues
+  5. Ensure code quality is improved, not just the error suppressed

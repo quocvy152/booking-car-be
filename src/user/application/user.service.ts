@@ -2,6 +2,7 @@ import { Injectable, Inject } from '@nestjs/common';
 import { User } from '../domain/entities';
 import type { IUserRepository } from '../domain/repositories';
 import { USER_REPOSITORY } from '../infrastructure/user.constants';
+import { AuthProvider } from '../../auth/domain/enums';
 
 @Injectable()
 export class UserService {
@@ -22,5 +23,12 @@ export class UserService {
 
   async findByEmail(email: string): Promise<User | null> {
     return this.userRepository.findByEmail(email);
+  }
+
+  async findByProvider(
+    provider: AuthProvider,
+    providerId: string,
+  ): Promise<User | null> {
+    return this.userRepository.findByProvider(provider, providerId);
   }
 }

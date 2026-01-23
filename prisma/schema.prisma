@@ -29,20 +29,28 @@ enum Role {
   ADMIN
 }
 
+enum AuthProvider {
+  EMAIL
+  GOOGLE
+  FACEBOOK
+}
+
 model User {
-  id            String    @id @default(uuid())
+  id            String       @id @default(uuid())
   full_name     String
-  email         String    @unique
-  phone         String?   @unique
-  password      String
+  email         String       @unique
+  phone         String?      @unique
+  password      String?
+  provider      AuthProvider @default(EMAIL)
+  provider_id   String?
   gender        Gender
-  role          Role      @default(USER)
+  role          Role         @default(USER)
   avatar        String?
   date_of_birth DateTime?
-  referral_code String?   @unique
-  created_at    DateTime  @default(now())
-  updated_at    DateTime  @updatedAt
-  is_deleted    Boolean   @default(false)
+  referral_code String?      @unique
+  created_at    DateTime     @default(now())
+  updated_at    DateTime     @updatedAt
+  is_deleted    Boolean      @default(false)
 
   @@map("users")
 }

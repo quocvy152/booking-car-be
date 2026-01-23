@@ -10,6 +10,7 @@ import {
 import { UserService } from '../../application/user.service';
 import { CreateUserDto } from '../dto';
 import { Role } from '../../domain/enums';
+import { AuthProvider } from '../../../auth/domain/enums';
 
 @Controller('users')
 export class UserController {
@@ -23,6 +24,8 @@ export class UserController {
       email: createUserDto.email,
       password: createUserDto.password,
       phone: createUserDto.phone ?? null,
+      provider: AuthProvider.EMAIL,
+      provider_id: null,
       gender: createUserDto.gender,
       role: createUserDto.role ?? Role.USER,
       avatar: createUserDto.avatar ?? null,

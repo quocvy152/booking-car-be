@@ -2,7 +2,13 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { User } from '../../domain/entities';
 import { IUserRepository } from '../../domain/repositories';
-import { User as PrismaUser, Gender, Role } from '@prisma/client';
+import {
+  Gender,
+  Role,
+  AuthProvider,
+  type User as PrismaUser,
+} from '@prisma/client';
+import { AuthProvider as DomainAuthProvider } from '../../../auth/domain/enums';
 
 @Injectable()
 export class PrismaUserRepository implements IUserRepository {
@@ -15,8 +21,10 @@ export class PrismaUserRepository implements IUserRepository {
       data: {
         full_name: data.full_name,
         email: data.email,
-        password: data.password!,
+        password: data.password || null,
         phone: data.phone ?? null,
+        provider: (data.provider ?? DomainAuthProvider.EMAIL) as AuthProvider,
+        provider_id: data.provider_id ?? null,
         gender: data.gender as Gender,
         role: (data.role ?? Role.USER) as Role,
         avatar: data.avatar ?? null,
@@ -50,6 +58,21 @@ export class PrismaUserRepository implements IUserRepository {
     return user ? this.mapToDomain(user) : null;
   }
 
+  async findByProvider(
+    provider: DomainAuthProvider,
+    providerId: string,
+  ): Promise<User | null> {
+    const user = await this.prisma.user.findFirst({
+      where: {
+        provider: provider as AuthProvider,
+        provider_id: providerId,
+        is_deleted: false,
+      },
+    });
+
+    return user ? this.mapToDomain(user) : null;
+  }
+
   private mapToDomain(prismaUser: PrismaUser): User {
     return {
       id: prismaUser.id,
@@ -57,6 +80,9 @@ export class PrismaUserRepository implements IUserRepository {
       email: prismaUser.email,
       phone: prismaUser.phone,
       // password is excluded for security reasons
+      provider:
+        (prismaUser.provider as DomainAuthProvider) || DomainAuthProvider.EMAIL,
+      provider_id: prismaUser.provider_id,
       gender: prismaUser.gender as User['gender'],
       role: prismaUser.role as User['role'],
       avatar: prismaUser.avatar,
