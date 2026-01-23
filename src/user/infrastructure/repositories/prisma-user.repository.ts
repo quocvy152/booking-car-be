@@ -58,6 +58,17 @@ export class PrismaUserRepository implements IUserRepository {
     return user ? this.mapToDomain(user) : null;
   }
 
+  async findByEmailWithPassword(email: string): Promise<User | null> {
+    const user = await this.prisma.user.findFirst({
+      where: {
+        email,
+        is_deleted: false,
+      },
+    });
+
+    return user ? this.mapToDomainWithPassword(user) : null;
+  }
+
   async findByProvider(
     provider: DomainAuthProvider,
     providerId: string,
@@ -80,6 +91,27 @@ export class PrismaUserRepository implements IUserRepository {
       email: prismaUser.email,
       phone: prismaUser.phone,
       // password is excluded for security reasons
+      provider:
+        (prismaUser.provider as DomainAuthProvider) || DomainAuthProvider.EMAIL,
+      provider_id: prismaUser.provider_id,
+      gender: prismaUser.gender as User['gender'],
+      role: prismaUser.role as User['role'],
+      avatar: prismaUser.avatar,
+      date_of_birth: prismaUser.date_of_birth,
+      referral_code: prismaUser.referral_code,
+      created_at: prismaUser.created_at,
+      updated_at: prismaUser.updated_at,
+      is_deleted: prismaUser.is_deleted,
+    };
+  }
+
+  private mapToDomainWithPassword(prismaUser: PrismaUser): User {
+    return {
+      id: prismaUser.id,
+      full_name: prismaUser.full_name,
+      email: prismaUser.email,
+      phone: prismaUser.phone,
+      password: prismaUser.password ?? undefined,
       provider:
         (prismaUser.provider as DomainAuthProvider) || DomainAuthProvider.EMAIL,
       provider_id: prismaUser.provider_id,

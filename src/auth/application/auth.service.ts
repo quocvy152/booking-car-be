@@ -66,24 +66,34 @@ export class AuthService {
   }
 
   async login(loginDto: LoginDto): Promise<AuthResponse> {
-    // Find user by email
+    // Find user by email to check provider
     const user = await this.userService.findByEmail(loginDto.email);
     if (!user) {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    // Check if user has password (not social auth user)
-    if (!user.password) {
+    // Check if user is using email provider (not social auth user)
+    if (user.provider !== AuthProvider.EMAIL) {
       throw new UnauthorizedException(
         'This account was created with social authentication. Please use social login.',
       );
     }
 
-    // Verify password
-    const isPasswordValid = await bcrypt.compare(
-      loginDto.password,
-      user.password,
+    // Get user with password for verification
+    const userWithPassword = await this.userService.findByEmailWithPassword(
+      loginDto.email,
     );
+    if (!userWithPassword) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    const password = userWithPassword.password;
+    if (!password) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    // Verify password
+    const isPasswordValid = await bcrypt.compare(loginDto.password, password);
     if (!isPasswordValid) {
       throw new UnauthorizedException('Invalid credentials');
     }
@@ -103,11 +113,22 @@ export class AuthService {
 
   async validateUser(email: string, password: string): Promise<User | null> {
     const user = await this.userService.findByEmail(email);
-    if (!user || !user.password) {
+    if (!user || user.provider !== AuthProvider.EMAIL) {
       return null;
     }
 
-    const isPasswordValid = await bcrypt.compare(password, user.password);
+    const userWithPassword =
+      await this.userService.findByEmailWithPassword(email);
+    if (!userWithPassword) {
+      return null;
+    }
+
+    const userPassword = userWithPassword.password;
+    if (!userPassword) {
+      return null;
+    }
+
+    const isPasswordValid = await bcrypt.compare(password, userPassword);
     if (!isPasswordValid) {
       return null;
     }

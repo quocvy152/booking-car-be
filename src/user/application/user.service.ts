@@ -25,6 +25,10 @@ export class UserService {
     return this.userRepository.findByEmail(email);
   }
 
+  async findByEmailWithPassword(email: string): Promise<User | null> {
+    return this.userRepository.findByEmailWithPassword(email);
+  }
+
   async findByProvider(
     provider: AuthProvider,
     providerId: string,

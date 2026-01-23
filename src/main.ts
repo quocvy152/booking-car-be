@@ -22,7 +22,17 @@ async function bootstrap() {
     .addTag('App', 'Application health check endpoints')
     .addTag('Authentication', 'Authentication and authorization endpoints')
     .addTag('Users', 'User management endpoints')
-    .addServer('/api', 'API Server')
+    .addBearerAuth(
+      {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+        name: 'JWT',
+        description: 'Enter JWT token',
+        in: 'header',
+      },
+      'JWT-auth', // This name here is important for matching up with @ApiBearerAuth() in your controller!
+    )
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
