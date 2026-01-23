@@ -7,6 +7,7 @@ import {
   ValidatorConstraint,
   ValidatorConstraintInterface,
 } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
 
 interface RegisterDtoObject {
   password: string;
@@ -28,19 +29,40 @@ export class MatchPasswordConstraint implements ValidatorConstraintInterface {
 }
 
 export class RegisterDto {
+  @ApiProperty({
+    description: 'Full name of the user',
+    example: 'John Doe',
+  })
   @IsString()
   full_name: string;
 
+  @ApiProperty({
+    description: 'Phone number',
+    example: '+84123456789',
+  })
   @IsString()
   phone: string;
 
+  @ApiProperty({
+    description: 'Email address',
+    example: 'john.doe@example.com',
+  })
   @IsEmail()
   email: string;
 
+  @ApiProperty({
+    description: 'Password (minimum 6 characters)',
+    example: 'password123',
+    minLength: 6,
+  })
   @IsString()
   @MinLength(6, { message: 'Password must be at least 6 characters long' })
   password: string;
 
+  @ApiProperty({
+    description: 'Confirm password (must match password)',
+    example: 'password123',
+  })
   @IsString()
   @Validate(MatchPasswordConstraint, ['password'])
   confirm_password: string;
